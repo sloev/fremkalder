@@ -111,7 +111,7 @@ repositories {
 dependencies {
 
 //    implementation(libs.jsoup)
-//    implementation(libs.gson)
+    implementation(libs.gson)
 //    implementation(libs.csv)
 
     implementation(libs.kotlinx.coroutines.core)
