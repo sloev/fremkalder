@@ -6,13 +6,15 @@ import org.openrndr.draw.shadeStyle
 import org.openrndr.math.Vector2
 import org.openrndr.shape.ShapeContour
 
-class Surfaces(val segments: Int = 8) {
+class Surfaces() {
     val surfaces: MutableList<Surface> = mutableListOf()
 
     val inputPoints: MutableList<ProjectorPoint> = mutableListOf()
     val outputPoints: MutableList<ProjectorPoint> = mutableListOf()
 
-    fun addRect(): Surface {
+
+
+    fun addRect(segments: Int = 8): Surface {
         val hue = (surfaces.size * 31 + 31) % 360.0
         val s = Surface(hue, segments = segments)
         inputPoints.add(s.addInputPoint(0.2, 0.2))
@@ -52,13 +54,21 @@ class Surfaces(val segments: Int = 8) {
     }
 
     fun mouseOverInput(normalizedMousePosition: Vector2) {
-        val closest = inputPoints.minByOrNull { normalizedMousePosition.squaredDistanceTo(it.point) }
-        inputPoints.forEach { it.hover = it == closest }
+        for (p in inputPoints.sortedWith(compareBy { normalizedMousePosition.squaredDistanceTo(it.point)})){
+            if (!p.surface.locked){
+                p.hover=true
+                return
+            }
+        }
     }
 
     fun mouseOverOutput(normalizedMousePosition: Vector2) {
-        val closest = outputPoints.minByOrNull { normalizedMousePosition.squaredDistanceTo(it.point) }
-        outputPoints.forEach { it.hover = it == closest }
+        for (p in outputPoints.sortedWith(compareBy { normalizedMousePosition.squaredDistanceTo(it.point)})){
+            if (!p.surface.locked){
+                p.hover=true
+                return
+            }
+        }
     }
 
     private fun drawPolygons(drawer: Drawer, points: MutableList<ProjectorPoint>) {

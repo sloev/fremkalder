@@ -8,11 +8,22 @@ private val vf = vertexFormat {
     position(3)
     textureCoordinate(2)
 }
+class ConfigSurface {
+    var hue: Double = 0.0
+    var inputPoints: MutableList<Vector2> = mutableListOf()
+    var outputPoints: MutableList<Vector2> = mutableListOf()
+    var locked = false
+    var segments=8
+    var kind="rect"
+    //var outputMesh = vertexBuffer(vf, 6 * segments * segments)
+    var showPolygons=true
 
+}
 class Surface(val hue: Double, val kind: String = "rect", val segments: Int = 8) {
     val inputPoints: MutableList<ProjectorPoint> = mutableListOf()
     val outputPoints: MutableList<ProjectorPoint> = mutableListOf()
     var outputMesh = vertexBuffer(vf, 6 * segments * segments)
+    var locked = false
 
     fun addInputPoint(x: Double, y: Double): ProjectorPoint {
         val p = ProjectorPoint(this, Vector2(x, y))

@@ -1,4 +1,5 @@
 import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
 import org.openrndr.application
 import org.openrndr.color.ColorHSLa
 import org.openrndr.color.ColorRGBa
@@ -6,40 +7,81 @@ import org.openrndr.dialogs.openFileDialog
 import org.openrndr.dialogs.saveFileDialog
 import org.openrndr.draw.isolatedWithTarget
 import org.openrndr.draw.renderTarget
+import org.openrndr.draw.vertexBuffer
 import org.openrndr.extra.color.presets.LAWN_GREEN
 import org.openrndr.ffmpeg.PlayMode
 import org.openrndr.ffmpeg.VideoPlayerConfiguration
 import org.openrndr.ffmpeg.VideoPlayerFFMPEG
 import org.openrndr.math.Vector2
 import org.openrndr.panel.controlManager
-import org.openrndr.panel.elements.button
-import org.openrndr.panel.elements.clicked
-import org.openrndr.panel.elements.div
-import org.openrndr.panel.elements.watchListDiv
+import org.openrndr.panel.elements.*
 import org.openrndr.panel.style.*
 import org.openrndr.shape.Rectangle
 import java.io.File
+import java.time.Instant
 
 class ProjectorPoint(val surface: Surface, var point: Vector2) {
     var hover = false
 }
 
-private class ProgramState {
-    val surfaces = Surfaces(8)
+
+class ProgramState {
+    var surfaces = Surfaces()
     var showPolygons = true
-    var movingPoint: Vector2? = null
+    var dirty = false
 
 
-    fun copyTo(programState: ProgramState) {
-
-    }
 
     fun save(file: File) {
-        file.writeText(Gson().toJson(this))
+        val configs: MutableList<ConfigSurface> = mutableListOf()
+
+        for (s in surfaces.surfaces) {
+            val cs = ConfigSurface()
+            cs.locked = s.locked
+            cs.hue = s.hue
+            cs.segments = s.segments
+            cs.kind = s.kind
+            cs.showPolygons = showPolygons
+            for (ip in s.inputPoints) {
+                cs.inputPoints.add(ip.point)
+            }
+            for (ip in s.outputPoints) {
+                cs.outputPoints.add(ip.point)
+            }
+            configs.add(cs)
+        }
+
+        file.writeText(Gson().toJson(configs))
+        dirty = false
     }
 
     fun load(file: File) {
-        Gson().fromJson(file.readText(), ProgramState::class.java).copyTo(this)
+        val typeToken = object : TypeToken<MutableList<ConfigSurface>>() {}
+        val configs: MutableList<ConfigSurface> = Gson().fromJson(file.readText(), typeToken.type)
+        this.surfaces = Surfaces()
+
+        for (cs in configs) {
+            val s = Surface(cs.hue, cs.kind, cs.segments)
+            for (ip in cs.inputPoints) {
+                val p = ProjectorPoint(s, ip)
+                s.inputPoints.add(p)
+                this.surfaces.inputPoints.add(p)
+            }
+            for (ip in cs.outputPoints) {
+                val p = ProjectorPoint(s, ip)
+                s.outputPoints.add(p)
+                this.surfaces.outputPoints.add(p)
+            }
+
+
+            this.surfaces.surfaces.add(s)
+            this.showPolygons = cs.showPolygons
+
+
+        }
+        dirty = false
+
+
     }
 }
 
@@ -74,10 +116,10 @@ fun main() = application {
         val outputRect = inputRect.movedBy(Vector2(0.0, inputRect.height + seperatorWidth))
 
         drawer.isolatedWithTarget(inputPreview) {
-            drawer.clear(ColorRGBa.BLACK)
+            drawer.clear(ColorRGBa.TRANSPARENT)
         }
         drawer.isolatedWithTarget(outputPreview) {
-            drawer.clear(ColorRGBa.BLACK)
+            drawer.clear(ColorRGBa.TRANSPARENT)
         }
 
         val programState = ProgramState()
@@ -97,6 +139,7 @@ fun main() = application {
                     ortho(outputPreview)
                     it.calculateMesh(drawer.bounds.dimensions)
                 }
+                programState.dirty = true
             }
         }
 
@@ -105,8 +148,10 @@ fun main() = application {
 
             if (inputRect.contains(ut.position)) {
                 programState.surfaces.mouseOverInput(inputRect.normalized(ut.position))
+
             } else if (outputRect.contains(ut.position)) {
                 programState.surfaces.mouseOverOutput(outputRect.normalized(ut.position))
+
             }
         }
 
@@ -122,22 +167,37 @@ fun main() = application {
                     this.flexDirection = FlexDirection.Row
                     this.width = 100.percent
                 }
-
-
-                button {
-                    label = "save"
-                    clicked {
-                        saveFileDialog(supportedExtensions = listOf("JSON" to listOf("json"))) {
-                            programState.save(it)
-                        }
-                    }
+watchObjectDiv("savebutton", watchObject = object {
+    // for primitive types we have to use property references
+    val dirty = programState::dirty
+}) {
+    div {
+        button {
+            label = "save ${watchObject.dirty.get()}"
+            style = styleSheet() {
+                this.background = Color.RGBa(if (watchObject.dirty.get()) ColorRGBa.RED else ColorRGBa.GRAY)
+            }
+            clicked {
+                saveFileDialog(supportedExtensions = listOf("FREMKALDER" to listOf("fremkalder"))) {
+                    programState.save(it)
                 }
+            }
+        }
+    }
+}
 
                 button {
                     label = "load"
+
                     clicked {
-                        openFileDialog(supportedExtensions = listOf("JSON" to listOf("json"))) {
+                        openFileDialog(supportedExtensions = listOf("FREMKALDER" to listOf("fremkalder"))) {
                             programState.load(it)
+                            drawer.isolatedWithTarget(outputPreview) {
+                                ortho(outputPreview)
+                                for (s in programState.surfaces.surfaces) {
+                                    s.calculateMesh(drawer.bounds.dimensions)
+                                }
+                            }
                         }
                     }
                 }
@@ -149,6 +209,8 @@ fun main() = application {
                             ortho(outputPreview)
                             s.calculateMesh(this.bounds.dimensions)
                         }
+                        programState.dirty = true
+
                     }
                 }
 
@@ -163,6 +225,18 @@ fun main() = application {
 
                             clicked {
                                 programState.surfaces.remove(surface)
+                                programState.dirty = true
+
+                            }
+                        }
+                        toggle {
+                            label = "lock"
+                            value = surface.locked
+                            events.valueChanged.listen {
+                                value = it.newValue
+                                surface.locked = value
+                                programState.dirty = true
+
                             }
                         }
 
@@ -190,13 +264,13 @@ fun main() = application {
             drawer.clear(ColorRGBa.LAWN_GREEN)
 
             drawer.isolatedWithTarget(inputPreview) {
-                clear(ColorRGBa.BLACK)
+                clear(ColorRGBa.TRANSPARENT)
                 ortho(inputPreview)
                 videoPlayer.draw(drawer, 0.0, 0.0, quadrantWidth, quadrantHeight)
             }
 
             drawer.isolatedWithTarget(outputPreview) {
-                clear(ColorRGBa.BLACK)
+                clear(ColorRGBa.TRANSPARENT)
                 ortho(outputPreview)
                 programState.surfaces.drawMeshes(inputPreview.colorBuffer(0), this)
 
@@ -211,6 +285,10 @@ fun main() = application {
                     programState.surfaces.drawOutputPolygons(this)
                 }
             }
+            drawer.fill = ColorRGBa.BLACK
+            drawer.stroke = null
+            drawer.rectangle(inputRect)
+            drawer.rectangle(outputRect)
 
             drawer.image(
                 inputPreview.colorBuffer(0),
