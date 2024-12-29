@@ -20,10 +20,10 @@ class Surfaces(val segments: Int = 8) {
         inputPoints.add(s.addInputPoint(0.8, 0.8))
         inputPoints.add(s.addInputPoint(0.8, 0.2))
 
-        outputPoints.add(s.addOutputPoint(0.2, 0.8))
         outputPoints.add(s.addOutputPoint(0.2, 0.2))
-        outputPoints.add(s.addOutputPoint(0.8, 0.2))
+        outputPoints.add(s.addOutputPoint(0.2, 0.8))
         outputPoints.add(s.addOutputPoint(0.8, 0.8))
+        outputPoints.add(s.addOutputPoint(0.8, 0.2))
 
         surfaces.add(s)
         return s
