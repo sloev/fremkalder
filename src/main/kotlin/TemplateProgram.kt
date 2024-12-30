@@ -38,7 +38,7 @@ class ProgramState {
         for (s in surfaces.surfaces) {
             val cs = ConfigSurface()
             cs.locked = s.locked
-            cs.hue = s.hue
+            cs.id = s.id
             cs.segments = s.segments
             cs.kind = s.kind
             cs.showPolygons = showPolygons
@@ -64,7 +64,7 @@ class ProgramState {
 
 
         for (cs in configs) {
-            val s = Surface(cs.hue, cs.kind, cs.segments)
+            val s = Surface(cs.id, cs.kind, cs.segments)
             for (ip in cs.inputPoints) {
                 val p = ProjectorPoint(s, ip)
                 s.inputPoints.add(p)
@@ -118,7 +118,7 @@ fun main() = application {
         }
         val inputRect = Rectangle(menuWidth, seperatorWidth, previewWidth, previewHeight)
         val outputRect = inputRect.movedBy(Vector2(0.0, inputRect.height + seperatorWidth))
-
+        val broadcast = Broadcast(outputWidth.toInt(), outputHeight.toInt())
         drawer.isolatedWithTarget(inputPreview) {
             drawer.clear(ColorRGBa.TRANSPARENT)
         }
@@ -171,36 +171,39 @@ fun main() = application {
                     this.flexDirection = FlexDirection.Row
                     this.width = 100.percent
                 }
-                watchObjectDiv("savebutton", watchObject = object {
-                    // for primitive types we have to use property references
-                    val dirty = programState::dirty
-                }) {
-                    div {
-                        button {
-                            label = "save ${watchObject.dirty.get()}"
-                            style = styleSheet() {
-                                this.background =
-                                    Color.RGBa(if (watchObject.dirty.get()) ColorRGBa.RED else ColorRGBa.GRAY)
-                            }
-                            clicked {
-                                saveFileDialog(supportedExtensions = listOf("FREMKALDER" to listOf("fremkalder"))) {
-                                    programState.save(it)
+                div("row") {
+
+                    watchObjectDiv("savebutton", watchObject = object {
+                        // for primitive types we have to use property references
+                        val dirty = programState::dirty
+                    }) {
+                        div {
+                            button {
+                                label = "save"
+                                style = styleSheet() {
+                                    this.background =
+                                        Color.RGBa(if (watchObject.dirty.get()) ColorRGBa.RED else ColorRGBa.GRAY)
+                                }
+                                clicked {
+                                    saveFileDialog(supportedExtensions = listOf("FREMKALDER" to listOf("fremkalder"))) {
+                                        programState.save(it)
+                                    }
                                 }
                             }
                         }
                     }
-                }
 
-                button {
-                    label = "load"
+                    button {
+                        label = "load"
 
-                    clicked {
-                        openFileDialog(supportedExtensions = listOf("FREMKALDER" to listOf("fremkalder"))) {
-                            programState.load(it)
-                            drawer.isolatedWithTarget(outputPreview) {
-                                ortho(outputPreview)
-                                for (s in programState.surfaces.surfaces) {
-                                    s.calculateMesh(drawer.bounds.dimensions)
+                        clicked {
+                            openFileDialog(supportedExtensions = listOf("FREMKALDER" to listOf("fremkalder"))) {
+                                programState.load(it)
+                                drawer.isolatedWithTarget(outputPreview) {
+                                    ortho(outputPreview)
+                                    for (s in programState.surfaces.surfaces) {
+                                        s.calculateMesh(drawer.bounds.dimensions)
+                                    }
                                 }
                             }
                         }
@@ -240,7 +243,8 @@ fun main() = application {
                             button {
                                 label = "delete"
                                 style = styleSheet() {
-                                    this.background = Color.RGBa(ColorHSLa(surface.hue, 0.7, 0.4, 1.0).toRGBa())
+                                    this.background = Color.RGBa(idToColor(surface.id))
+
                                 }
 
                                 clicked {
@@ -277,6 +281,7 @@ fun main() = application {
         videoPlayer.ended.listen {
             videoPlayer.restart()
         }
+        broadcast.start()
 
         extend(cm)
 
@@ -318,6 +323,7 @@ fun main() = application {
                 outputPreview.colorBuffer(0),
                 outputRect.x, outputRect.y, outputRect.width, outputRect.height
             )
+            broadcast.outputFrame(outputPreview.colorBuffer(0))
         }
     }
 }

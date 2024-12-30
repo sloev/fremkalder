@@ -1,4 +1,5 @@
 import org.openrndr.color.ColorHSLa
+import org.openrndr.color.ColorRGBa
 import org.openrndr.draw.ColorBuffer
 import org.openrndr.draw.DrawPrimitive
 import org.openrndr.draw.Drawer
@@ -6,6 +7,9 @@ import org.openrndr.draw.shadeStyle
 import org.openrndr.math.Vector2
 import org.openrndr.shape.ShapeContour
 
+fun idToColor(id:Double):ColorRGBa {
+    return ColorHSLa((id *31 )%360, 1.0-((id*71)%600.0)/800.0, 0.4, 1.0).toRGBa()
+}
 class Surfaces() {
     val surfaces: MutableList<Surface> = mutableListOf()
 
@@ -13,8 +17,8 @@ class Surfaces() {
     val outputPoints: MutableList<ProjectorPoint> = mutableListOf()
 
     fun addTriangle(): Surface {
-        val hue = (surfaces.size * 31 + 91) % 360.0
-        val s = Surface(hue, kind="triangle")
+        val id = surfaces.size+1.0
+        val s = Surface(id, kind="triangle")
         inputPoints.add(s.addInputPoint(0.2, 0.2))
         inputPoints.add(s.addInputPoint(0.2, 0.8))
         inputPoints.add(s.addInputPoint(0.8, 0.8))
@@ -29,8 +33,8 @@ class Surfaces() {
 
 
     fun addRect(segments: Int = 8): Surface {
-        val hue = (surfaces.size * 31 + 91) % 360.0
-        val s = Surface(hue, kind="rect", segments = segments)
+        val id = surfaces.size + 1.0
+        val s = Surface(id, kind="rect", segments = segments)
         inputPoints.add(s.addInputPoint(0.2, 0.2))
         inputPoints.add(s.addInputPoint(0.2, 0.8))
         inputPoints.add(s.addInputPoint(0.8, 0.8))
@@ -89,7 +93,7 @@ class Surfaces() {
         val localPoints = points.map { it.point * drawer.bounds.dimensions }
         val contour = ShapeContour.fromPoints(localPoints, closed = true)
 
-        drawer.stroke = ColorHSLa(points[0].surface.hue, 0.7, 0.4, 1.0).toRGBa()
+        drawer.stroke = idToColor(points[0].surface.id)
         drawer.strokeWeight = 5.0
         drawer.fill = null
         drawer.contour(contour)
