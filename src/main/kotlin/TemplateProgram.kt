@@ -129,33 +129,36 @@ fun main() = application {
         val programState = ProgramState()
 
         mouse.dragged.listen { ut ->
-            val p = when {
-                inputRect.contains(ut.position) ->
-                    programState.surfaces.mouseDraggedInput(inputRect.normalized(ut.position))
+            if(programState.showPolygons) {
+                val p = when {
+                    inputRect.contains(ut.position) ->
+                        programState.surfaces.mouseDraggedInput(inputRect.normalized(ut.position))
 
-                outputRect.contains(ut.position) ->
-                    programState.surfaces.mouseDraggedOutput(outputRect.normalized(ut.position))
+                    outputRect.contains(ut.position) ->
+                        programState.surfaces.mouseDraggedOutput(outputRect.normalized(ut.position))
 
-                else -> null
-            }
-            p?.surface?.let {
-                drawer.isolatedWithTarget(outputPreview) {
-                    ortho(outputPreview)
-                    it.calculateMesh(drawer.bounds.dimensions)
+                    else -> null
                 }
-                programState.dirty = true
+                p?.surface?.let {
+                    drawer.isolatedWithTarget(outputPreview) {
+                        ortho(outputPreview)
+                        it.calculateMesh(drawer.bounds.dimensions)
+                    }
+                    programState.dirty = true
+                }
             }
         }
 
         mouse.moved.listen { ut ->
             programState.surfaces.clearHovers()
+            if(programState.showPolygons) {
+                if (inputRect.contains(ut.position)) {
+                    programState.surfaces.mouseOverInput(inputRect.normalized(ut.position))
 
-            if (inputRect.contains(ut.position)) {
-                programState.surfaces.mouseOverInput(inputRect.normalized(ut.position))
+                } else if (outputRect.contains(ut.position)) {
+                    programState.surfaces.mouseOverOutput(outputRect.normalized(ut.position))
 
-            } else if (outputRect.contains(ut.position)) {
-                programState.surfaces.mouseOverOutput(outputRect.normalized(ut.position))
-
+                }
             }
         }
 
