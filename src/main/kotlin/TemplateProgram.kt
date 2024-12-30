@@ -208,6 +208,18 @@ fun main() = application {
                             }
                         }
                     }
+                    watchObjectDiv(watchObject = object {
+                        val showPolygons= programState::showPolygons
+                    }){
+                        toggle {
+                            label = "mesh"
+                            value = watchObject.showPolygons.get()
+                            events.valueChanged.listen {
+                                value = it.newValue
+                                programState.showPolygons = !watchObject.showPolygons.get()
+                            }
+                        }
+                    }
                 }
                 div("row"){
                 button {
