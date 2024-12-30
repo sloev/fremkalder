@@ -211,6 +211,8 @@ fun main() = application {
                             }
                         }
                     }
+                }
+                div("row"){
                     watchObjectDiv(watchObject = object {
                         val showPolygons= programState::showPolygons
                     }){
@@ -220,6 +222,22 @@ fun main() = application {
                             events.valueChanged.listen {
                                 value = it.newValue
                                 programState.showPolygons = !watchObject.showPolygons.get()
+                            }
+                        }
+                    }
+                    watchObjectDiv(watchObject = object {
+                        val broadcasting = broadcast::broadcasting
+                    }){
+                        toggle {
+                            label = "live"
+                            value = watchObject.broadcasting.get()
+                            events.valueChanged.listen {
+                                if (it.newValue){
+                                    broadcast.start()
+                                }else{
+                                    broadcast.stop()
+                                }
+
                             }
                         }
                     }
@@ -296,7 +314,6 @@ fun main() = application {
         videoPlayer.ended.listen {
             videoPlayer.restart()
         }
-        broadcast.start()
 
         extend(cm)
 
@@ -338,7 +355,9 @@ fun main() = application {
                 outputPreview.colorBuffer(0),
                 outputRect.x, outputRect.y, outputRect.width, outputRect.height
             )
-            broadcast.outputFrame(outputPreview.colorBuffer(0))
+            if(broadcast.broadcasting) {
+                broadcast.outputFrame(outputPreview.colorBuffer(0))
+            }
         }
     }
 }

@@ -20,7 +20,7 @@ fun createByteBuffer(size: Int): ByteBuffer {
 class Broadcast(
     val width: Int, val height: Int, val udpIp: String = "255.255.255.255", val udpPort: String = "12345"
 ) {
-
+    var broadcasting = false
     val videoWriter = VideoWriter()
     var inputFormat = "rgba"
     var frameRate = 25
@@ -46,19 +46,30 @@ class Broadcast(
         "rgba64le" -> createByteBuffer(width * height * 8)
         else -> throw RuntimeException("unsupported format $inputFormat")
     }
+    var ffmpeg: Process? = null
+
     fun start() {
 
         val pb = ProcessBuilder().command("/bin/sh", "-c", cmd)
+
         pb.redirectErrorStream(true)
         pb.redirectOutput(ffmpegOutput)
 
 
         try {
-            val ffmpeg = pb.start()
-            channel = Channels.newChannel(ffmpeg.outputStream)
+
+             ffmpeg = pb.start()
+            ffmpeg?.let {
+                channel = Channels.newChannel(it.outputStream)
+            }
+            broadcasting = true
         } catch (e: IOException) {
             throw RuntimeException("failed to launch ffmpeg", e)
         }
+    }
+    fun stop() {
+        ffmpeg?.destroy()
+        broadcasting = false
     }
 
     fun outputFrame(frame: ColorBuffer) {
