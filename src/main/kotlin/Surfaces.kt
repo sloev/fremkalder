@@ -12,11 +12,25 @@ class Surfaces() {
     val inputPoints: MutableList<ProjectorPoint> = mutableListOf()
     val outputPoints: MutableList<ProjectorPoint> = mutableListOf()
 
+    fun addTriangle(): Surface {
+        val hue = (surfaces.size * 31 + 91) % 360.0
+        val s = Surface(hue, kind="triangle")
+        inputPoints.add(s.addInputPoint(0.2, 0.2))
+        inputPoints.add(s.addInputPoint(0.2, 0.8))
+        inputPoints.add(s.addInputPoint(0.8, 0.8))
+
+        outputPoints.add(s.addOutputPoint(0.2, 0.2))
+        outputPoints.add(s.addOutputPoint(0.2, 0.8))
+        outputPoints.add(s.addOutputPoint(0.8, 0.8))
+
+        surfaces.add(s)
+        return s
+    }
 
 
     fun addRect(segments: Int = 8): Surface {
-        val hue = (surfaces.size * 31 + 31) % 360.0
-        val s = Surface(hue, segments = segments)
+        val hue = (surfaces.size * 31 + 91) % 360.0
+        val s = Surface(hue, kind="rect", segments = segments)
         inputPoints.add(s.addInputPoint(0.2, 0.2))
         inputPoints.add(s.addInputPoint(0.2, 0.8))
         inputPoints.add(s.addInputPoint(0.8, 0.8))
@@ -75,7 +89,7 @@ class Surfaces() {
         val localPoints = points.map { it.point * drawer.bounds.dimensions }
         val contour = ShapeContour.fromPoints(localPoints, closed = true)
 
-        drawer.stroke = ColorHSLa(points[0].surface.hue, 0.7, 0.5, 1.0).toRGBa()
+        drawer.stroke = ColorHSLa(points[0].surface.hue, 0.7, 0.4, 1.0).toRGBa()
         drawer.strokeWeight = 5.0
         drawer.fill = null
         drawer.contour(contour)

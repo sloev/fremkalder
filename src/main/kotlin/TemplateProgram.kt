@@ -8,6 +8,7 @@ import org.openrndr.dialogs.saveFileDialog
 import org.openrndr.draw.isolatedWithTarget
 import org.openrndr.draw.renderTarget
 import org.openrndr.draw.vertexBuffer
+import org.openrndr.extra.color.presets.DARK_SLATE_GRAY
 import org.openrndr.extra.color.presets.LAWN_GREEN
 import org.openrndr.ffmpeg.PlayMode
 import org.openrndr.ffmpeg.VideoPlayerConfiguration
@@ -29,7 +30,6 @@ class ProgramState {
     var surfaces = Surfaces()
     var showPolygons = true
     var dirty = false
-
 
 
     fun save(file: File) {
@@ -58,7 +58,10 @@ class ProgramState {
     fun load(file: File) {
         val typeToken = object : TypeToken<MutableList<ConfigSurface>>() {}
         val configs: MutableList<ConfigSurface> = Gson().fromJson(file.readText(), typeToken.type)
-        this.surfaces = Surfaces()
+        this.surfaces.surfaces.clear()
+        this.surfaces.inputPoints.clear()
+        this.surfaces.outputPoints.clear()
+
 
         for (cs in configs) {
             val s = Surface(cs.hue, cs.kind, cs.segments)
@@ -72,6 +75,7 @@ class ProgramState {
                 s.outputPoints.add(p)
                 this.surfaces.outputPoints.add(p)
             }
+            s.locked = cs.locked
 
 
             this.surfaces.surfaces.add(s)
@@ -167,24 +171,25 @@ fun main() = application {
                     this.flexDirection = FlexDirection.Row
                     this.width = 100.percent
                 }
-watchObjectDiv("savebutton", watchObject = object {
-    // for primitive types we have to use property references
-    val dirty = programState::dirty
-}) {
-    div {
-        button {
-            label = "save ${watchObject.dirty.get()}"
-            style = styleSheet() {
-                this.background = Color.RGBa(if (watchObject.dirty.get()) ColorRGBa.RED else ColorRGBa.GRAY)
-            }
-            clicked {
-                saveFileDialog(supportedExtensions = listOf("FREMKALDER" to listOf("fremkalder"))) {
-                    programState.save(it)
+                watchObjectDiv("savebutton", watchObject = object {
+                    // for primitive types we have to use property references
+                    val dirty = programState::dirty
+                }) {
+                    div {
+                        button {
+                            label = "save ${watchObject.dirty.get()}"
+                            style = styleSheet() {
+                                this.background =
+                                    Color.RGBa(if (watchObject.dirty.get()) ColorRGBa.RED else ColorRGBa.GRAY)
+                            }
+                            clicked {
+                                saveFileDialog(supportedExtensions = listOf("FREMKALDER" to listOf("fremkalder"))) {
+                                    programState.save(it)
+                                }
+                            }
+                        }
+                    }
                 }
-            }
-        }
-    }
-}
 
                 button {
                     label = "load"
@@ -201,8 +206,9 @@ watchObjectDiv("savebutton", watchObject = object {
                         }
                     }
                 }
+                div("row"){
                 button {
-                    label = "new surface"
+                    label = "+ rect"
                     clicked {
                         val s = programState.surfaces.addRect()
                         drawer.isolatedWithTarget(outputPreview) {
@@ -213,32 +219,46 @@ watchObjectDiv("savebutton", watchObject = object {
 
                     }
                 }
-
-                watchListDiv("surfaces", watchList = programState.surfaces.surfaces) { surface ->
-                    div("row") {
-
-                        button {
-                            label = "delete"
-                            style = styleSheet() {
-                                this.background = Color.RGBa(ColorHSLa(surface.hue, 0.7, 0.5, 1.0).toRGBa())
-                            }
-
-                            clicked {
-                                programState.surfaces.remove(surface)
-                                programState.dirty = true
-
-                            }
+                button {
+                    label = "+ triangle"
+                    clicked {
+                        val s = programState.surfaces.addTriangle()
+                        drawer.isolatedWithTarget(outputPreview) {
+                            ortho(outputPreview)
+                            s.calculateMesh(this.bounds.dimensions)
                         }
-                        toggle {
-                            label = "lock"
-                            value = surface.locked
-                            events.valueChanged.listen {
-                                value = it.newValue
-                                surface.locked = value
-                                programState.dirty = true
+                        programState.dirty = true
 
+                    }
+                }
+            }
+
+                watchListDiv("surfaces", watchList = programState.surfaces.surfaces){
+                    surface ->
+                        div("row") {
+
+                            button {
+                                label = "delete"
+                                style = styleSheet() {
+                                    this.background = Color.RGBa(ColorHSLa(surface.hue, 0.7, 0.4, 1.0).toRGBa())
+                                }
+
+                                clicked {
+                                    programState.surfaces.remove(surface)
+                                    programState.dirty = true
+
+                                }
                             }
-                        }
+                            toggle {
+                                label = "lock"
+                                value = surface.locked
+                                events.valueChanged.listen {
+                                    value = it.newValue
+                                    surface.locked = value
+                                    programState.dirty = true
+
+                                }
+                            }
 
                     }
                 }
@@ -261,7 +281,7 @@ watchObjectDiv("savebutton", watchObject = object {
         extend(cm)
 
         extend {
-            drawer.clear(ColorRGBa.LAWN_GREEN)
+            drawer.clear(ColorRGBa.DARK_SLATE_GRAY)
 
             drawer.isolatedWithTarget(inputPreview) {
                 clear(ColorRGBa.TRANSPARENT)
