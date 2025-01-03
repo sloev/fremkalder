@@ -133,9 +133,16 @@ fun main() = application {
         }
         val inputRect = Rectangle(menuWidth, seperatorWidth, previewWidth, previewHeight)
         val inputQuadrant1 = Rectangle(menuWidth, seperatorWidth, previewQuadrantWidth, previewQuadrantHeight)
-        val inputQuadrant2 = Rectangle(menuWidth+previewQuadrantWidth, seperatorWidth, previewQuadrantWidth, previewQuadrantHeight)
-        val inputQuadrant3 = Rectangle(menuWidth, seperatorWidth+previewQuadrantHeight, previewQuadrantWidth, previewQuadrantHeight)
-        val inputQuadrant4 = Rectangle(menuWidth+previewQuadrantWidth, seperatorWidth+previewQuadrantHeight, previewQuadrantWidth, previewQuadrantHeight)
+        val inputQuadrant2 =
+            Rectangle(menuWidth + previewQuadrantWidth, seperatorWidth, previewQuadrantWidth, previewQuadrantHeight)
+        val inputQuadrant3 =
+            Rectangle(menuWidth, seperatorWidth + previewQuadrantHeight, previewQuadrantWidth, previewQuadrantHeight)
+        val inputQuadrant4 = Rectangle(
+            menuWidth + previewQuadrantWidth,
+            seperatorWidth + previewQuadrantHeight,
+            previewQuadrantWidth,
+            previewQuadrantHeight
+        )
 
         val outputRect = inputRect.movedBy(Vector2(0.0, inputRect.height + seperatorWidth))
         val broadcast = Broadcast(outputWidth.toInt(), outputHeight.toInt())
@@ -269,22 +276,7 @@ fun main() = application {
                 }) {
 
 
-                    if (!watchObject.mappingMode.get()) {
-                        for (i in 0..3) {
-                            div("row") {
-
-                                button {
-                                    label = "load player ${i + 1}"
-                                    clicked {
-                                        openFileDialog(supportedExtensions = listOf("MOV" to listOf("mov"))) {
-                                            videoplayers[i] = loadVideo(it.path)
-                                        }
-                                    }
-                                }
-                            }
-                        }
-
-                    } else {
+                    if (watchObject.mappingMode.get()) {
 
                         div("row") {
                             button {
@@ -350,27 +342,27 @@ fun main() = application {
 
 
         extend(cm)
-        window.drop.listen {dropped ->
+        window.drop.listen { dropped ->
             val firstVideo = dropped.files.firstOrNull {
                 File(it).extension.lowercase() in listOf("mov", "MOV")
 
             }
-            if (firstVideo!=null) {
+            if (firstVideo != null) {
                 if (inputQuadrant1.contains(dropped.position)) {
                     videoplayers[0] = loadVideo(firstVideo)
                     println("load video player 0")
 
-                }else if (inputQuadrant2.contains(dropped.position)) {
+                } else if (inputQuadrant2.contains(dropped.position)) {
                     videoplayers[1] = loadVideo(firstVideo)
                     println("load video player 1")
 
 
-                }else if (inputQuadrant3.contains(dropped.position)) {
+                } else if (inputQuadrant3.contains(dropped.position)) {
                     videoplayers[2] = loadVideo(firstVideo)
                     println("load video player 2")
 
 
-                }else if (inputQuadrant4.contains(dropped.position)) {
+                } else if (inputQuadrant4.contains(dropped.position)) {
                     videoplayers[3] = loadVideo(firstVideo)
                     println("load video player 3")
 
