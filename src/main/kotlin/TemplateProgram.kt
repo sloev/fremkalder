@@ -39,7 +39,6 @@ class ProgramState {
             val cs = ConfigSurface()
             cs.locked = s.locked
             cs.id = s.id
-            cs.segments = s.segments
             cs.kind = s.kind
             cs.showPolygons = showPolygons
             for (ip in s.inputPoints) {
@@ -58,13 +57,11 @@ class ProgramState {
     fun load(file: File) {
         val typeToken = object : TypeToken<MutableList<ConfigSurface>>() {}
         val configs: MutableList<ConfigSurface> = Gson().fromJson(file.readText(), typeToken.type)
-        this.surfaces.surfaces.clear()
-        this.surfaces.inputPoints.clear()
-        this.surfaces.outputPoints.clear()
+        this.surfaces.clear()
 
 
         for (cs in configs) {
-            val s = Surface(cs.id, cs.kind, cs.segments)
+            val s = Surface(cs.id, cs.kind)
             for (ip in cs.inputPoints) {
                 val p = ProjectorPoint(s, ip)
                 s.inputPoints.add(p)
@@ -79,13 +76,12 @@ class ProgramState {
 
 
             this.surfaces.surfaces.add(s)
+            this.surfaces.incrementSurfaceCounts(s.kind)
             this.showPolygons = cs.showPolygons
 
 
         }
         dirty = false
-
-
     }
 }
 
@@ -139,10 +135,10 @@ fun main() = application {
 
                     else -> null
                 }
-                p?.surface?.let {
+                p?.let{
                     drawer.isolatedWithTarget(outputPreview) {
                         ortho(outputPreview)
-                        it.calculateMesh(drawer.bounds.dimensions)
+                        programState.surfaces.calculateMesh(drawer.bounds.dimensions)
                     }
                     programState.dirty = true
                 }
@@ -204,9 +200,8 @@ fun main() = application {
                                 programState.load(it)
                                 drawer.isolatedWithTarget(outputPreview) {
                                     ortho(outputPreview)
-                                    for (s in programState.surfaces.surfaces) {
-                                        s.calculateMesh(drawer.bounds.dimensions)
-                                    }
+                                    programState.surfaces.calculateMesh(drawer.bounds.dimensions)
+
                                 }
                             }
                         }
@@ -246,10 +241,10 @@ fun main() = application {
                 button {
                     label = "+ rect"
                     clicked {
-                        val s = programState.surfaces.addRect()
+                        programState.surfaces.addRect()
                         drawer.isolatedWithTarget(outputPreview) {
                             ortho(outputPreview)
-                            s.calculateMesh(this.bounds.dimensions)
+                            programState.surfaces.calculateMesh(this.bounds.dimensions)
                         }
                         programState.dirty = true
 
@@ -258,10 +253,10 @@ fun main() = application {
                 button {
                     label = "+ triangle"
                     clicked {
-                        val s = programState.surfaces.addTriangle()
+                        programState.surfaces.addTriangle()
                         drawer.isolatedWithTarget(outputPreview) {
                             ortho(outputPreview)
-                            s.calculateMesh(this.bounds.dimensions)
+                            programState.surfaces.calculateMesh(this.bounds.dimensions)
                         }
                         programState.dirty = true
 

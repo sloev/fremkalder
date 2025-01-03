@@ -23,7 +23,7 @@ class Broadcast(
     var broadcasting = false
     val videoWriter = VideoWriter()
     var inputFormat = "rgba"
-    var frameRate = 25
+    var frameRate = 30
     var ffmpegOutput = File("ffmpegOutput.txt")
 
 
@@ -31,14 +31,12 @@ class Broadcast(
     val socatFile = "/usr/bin/socat"
 
     val cmd = """
-            $ffmpegFile -hide_banner -threads 1 -filter_threads 1 \
+            $ffmpegFile  \
             -f rawvideo -vcodec rawvideo \
             -s "${width}x${height}" -pix_fmt "$inputFormat" -r "$frameRate" -i - \
-            -threads 0 -frame_drop_threshold -1 -g 1 -fps_mode:v vfr \
-            -vf "vflip" -c:v libx264 -tune zerolatency -muxdelay 0 -flags2 '+fast' \
-            -f mpegts "pipe:1" | $socatFile - udp-sendto:$udpIp:$udpPort,broadcast
+            -c:v libx264 -preset ultrafast -tune zerolatency -muxdelay 0 -flags2 '+fast' \
+            -f mpegts -omit_video_pes_length 1 "pipe:1"   | $socatFile - udp-sendto:$udpIp:$udpPort,broadcast
         """.trimIndent()
-
 
     var channel: WritableByteChannel? = null
     val frameBuffer: ByteBuffer = when (inputFormat) {
