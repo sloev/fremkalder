@@ -214,6 +214,7 @@ class Surfaces() {
     }
 
     fun clear() {
+        surfaces.clear()
         inputPoints.clear()
         outputPoints.clear()
         outputMesh= null
