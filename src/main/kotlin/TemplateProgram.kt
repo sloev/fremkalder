@@ -25,6 +25,22 @@ class ProjectorPoint(val surface: Surface, var point: Vector2) {
     var hover = false
 }
 
+fun loadVideo(fileName: String): VideoPlayerFFMPEG {
+    val videoPlayer = VideoPlayerFFMPEG.fromFile(
+
+        fileName, PlayMode.VIDEO, VideoPlayerConfiguration().apply {
+            useHardwareDecoding = false
+            videoFrameQueueSize = 500
+            displayQueueCooldown = 5
+            //synchronizeToClock = false
+        })
+
+    videoPlayer.play()
+    videoPlayer.ended.listen {
+        videoPlayer.restart()
+    }
+    return videoPlayer
+}
 
 class ProgramState {
     var surfaces = Surfaces()
@@ -89,6 +105,9 @@ class ProgramState {
 fun main() = application {
     val previewWidth = 640.0
     val previewHeight = 360.0
+    val previewQuadrantWidth = previewWidth / 2.0
+    val previewQuadrantHeight = previewHeight / 2.0
+
     val menuWidth = 200.0
     val seperatorWidth = 10.0
     val outputWidth = 1920.0
@@ -113,8 +132,15 @@ fun main() = application {
             depthBuffer()
         }
         val inputRect = Rectangle(menuWidth, seperatorWidth, previewWidth, previewHeight)
+        val inputQuadrant1 = Rectangle(menuWidth, seperatorWidth, previewQuadrantWidth, previewQuadrantHeight)
+        val inputQuadrant2 = Rectangle(menuWidth+previewQuadrantWidth, seperatorWidth, previewQuadrantWidth, previewQuadrantHeight)
+        val inputQuadrant3 = Rectangle(menuWidth, seperatorWidth+previewQuadrantHeight, previewQuadrantWidth, previewQuadrantHeight)
+        val inputQuadrant4 = Rectangle(menuWidth+previewQuadrantWidth, seperatorWidth+previewQuadrantHeight, previewQuadrantWidth, previewQuadrantHeight)
+
         val outputRect = inputRect.movedBy(Vector2(0.0, inputRect.height + seperatorWidth))
         val broadcast = Broadcast(outputWidth.toInt(), outputHeight.toInt())
+        var videoplayers: MutableList<VideoPlayerFFMPEG?> = mutableListOf(null, null, null, null)
+
         drawer.isolatedWithTarget(inputPreview) {
             drawer.clear(ColorRGBa.TRANSPARENT)
         }
@@ -125,7 +151,7 @@ fun main() = application {
         val programState = ProgramState()
 
         mouse.dragged.listen { ut ->
-            if(programState.showPolygons) {
+            if (programState.showPolygons) {
                 val p = when {
                     inputRect.contains(ut.position) ->
                         programState.surfaces.mouseDraggedInput(inputRect.normalized(ut.position))
@@ -135,7 +161,7 @@ fun main() = application {
 
                     else -> null
                 }
-                p?.let{
+                p?.let {
                     drawer.isolatedWithTarget(outputPreview) {
                         ortho(outputPreview)
                         programState.surfaces.calculateMesh(drawer.bounds.dimensions)
@@ -147,7 +173,7 @@ fun main() = application {
 
         mouse.moved.listen { ut ->
             programState.surfaces.clearHovers()
-            if(programState.showPolygons) {
+            if (programState.showPolygons) {
                 if (inputRect.contains(ut.position)) {
                     programState.surfaces.mouseOverInput(inputRect.normalized(ut.position))
 
@@ -160,6 +186,7 @@ fun main() = application {
 
 
         val cm = controlManager {
+
             layout {
                 styleSheet(has class_ "surfaces") {
                     this.width = menuWidth.toInt().px
@@ -207,10 +234,10 @@ fun main() = application {
                         }
                     }
                 }
-                div("row"){
+                div("row") {
                     watchObjectDiv(watchObject = object {
-                        val showPolygons= programState::showPolygons
-                    }){
+                        val showPolygons = programState::showPolygons
+                    }) {
                         toggle {
                             label = "mapping"
                             value = watchObject.showPolygons.get()
@@ -222,14 +249,14 @@ fun main() = application {
                     }
                     watchObjectDiv(watchObject = object {
                         val broadcasting = broadcast::broadcasting
-                    }){
+                    }) {
                         toggle {
                             label = "live"
                             value = watchObject.broadcasting.get()
                             events.valueChanged.listen {
-                                if (it.newValue){
+                                if (it.newValue) {
                                     broadcast.start()
-                                }else{
+                                } else {
                                     broadcast.stop()
                                 }
 
@@ -237,88 +264,132 @@ fun main() = application {
                         }
                     }
                 }
-                div("row"){
-                button {
-                    label = "+ rect"
-                    clicked {
-                        programState.surfaces.addRect()
-                        drawer.isolatedWithTarget(outputPreview) {
-                            ortho(outputPreview)
-                            programState.surfaces.calculateMesh(this.bounds.dimensions)
+                watchObjectDiv(watchObject = object {
+                    val mappingMode = programState::showPolygons
+                }) {
+
+
+                    if (!watchObject.mappingMode.get()) {
+                        for (i in 0..3) {
+                            div("row") {
+
+                                button {
+                                    label = "load player ${i + 1}"
+                                    clicked {
+                                        openFileDialog(supportedExtensions = listOf("MOV" to listOf("mov"))) {
+                                            videoplayers[i] = loadVideo(it.path)
+                                        }
+                                    }
+                                }
+                            }
                         }
-                        programState.dirty = true
 
-                    }
-                }
-                button {
-                    label = "+ triangle"
-                    clicked {
-                        programState.surfaces.addTriangle()
-                        drawer.isolatedWithTarget(outputPreview) {
-                            ortho(outputPreview)
-                            programState.surfaces.calculateMesh(this.bounds.dimensions)
-                        }
-                        programState.dirty = true
+                    } else {
 
-                    }
-                }
-            }
-
-                watchListDiv("surfaces", watchList = programState.surfaces.surfaces){
-                    surface ->
                         div("row") {
-
                             button {
-                                label = "delete"
-                                style = styleSheet() {
-                                    this.background = Color.RGBa(idToColor(surface.id))
-
-                                }
-
+                                label = "+ rect"
                                 clicked {
-                                    programState.surfaces.remove(surface)
+                                    programState.surfaces.addRect()
+                                    drawer.isolatedWithTarget(outputPreview) {
+                                        ortho(outputPreview)
+                                        programState.surfaces.calculateMesh(this.bounds.dimensions)
+                                    }
                                     programState.dirty = true
-
                                 }
                             }
-                            toggle {
-                                label = "lock"
-                                value = surface.locked
-                                events.valueChanged.listen {
-                                    value = it.newValue
-                                    surface.locked = value
+                            button {
+                                label = "+ triangle"
+                                clicked {
+                                    programState.surfaces.addTriangle()
+                                    drawer.isolatedWithTarget(outputPreview) {
+                                        ortho(outputPreview)
+                                        programState.surfaces.calculateMesh(this.bounds.dimensions)
+                                    }
                                     programState.dirty = true
-
                                 }
                             }
+                        }
 
+                        watchListDiv("surfaces", watchList = programState.surfaces.surfaces) { surface ->
+                            div("row") {
+
+                                button {
+                                    label = "delete"
+                                    style = styleSheet() {
+                                        this.background = Color.RGBa(idToColor(surface.id))
+
+                                    }
+
+                                    clicked {
+                                        programState.surfaces.remove(surface)
+                                        programState.dirty = true
+
+                                    }
+                                }
+                                toggle {
+                                    label = "lock"
+                                    value = surface.locked
+                                    events.valueChanged.listen {
+                                        value = it.newValue
+                                        surface.locked = value
+                                        programState.dirty = true
+
+                                    }
+                                }
+
+                            }
+                        }
                     }
                 }
             }
         }
 
 
-        val videoPlayer = VideoPlayerFFMPEG.fromFile(
-            "data/video2.mov", PlayMode.VIDEO, VideoPlayerConfiguration().apply {
-                useHardwareDecoding = false
-                videoFrameQueueSize = 500
-                displayQueueCooldown = 5
-                //synchronizeToClock = false
-            })
-        videoPlayer.play()
-        videoPlayer.ended.listen {
-            videoPlayer.restart()
-        }
+
+
 
         extend(cm)
+        window.drop.listen {dropped ->
+            val firstVideo = dropped.files.firstOrNull {
+                File(it).extension.lowercase() in listOf("mov", "MOV")
 
+            }
+            if (firstVideo!=null) {
+                if (inputQuadrant1.contains(dropped.position)) {
+                    videoplayers[0] = loadVideo(firstVideo)
+                    println("load video player 0")
+
+                }else if (inputQuadrant2.contains(dropped.position)) {
+                    videoplayers[1] = loadVideo(firstVideo)
+                    println("load video player 1")
+
+
+                }else if (inputQuadrant3.contains(dropped.position)) {
+                    videoplayers[2] = loadVideo(firstVideo)
+                    println("load video player 2")
+
+
+                }else if (inputQuadrant4.contains(dropped.position)) {
+                    videoplayers[3] = loadVideo(firstVideo)
+                    println("load video player 3")
+
+
+                }
+
+            }
+        }
         extend {
             drawer.clear(ColorRGBa.DARK_SLATE_GRAY)
 
             drawer.isolatedWithTarget(inputPreview) {
                 clear(ColorRGBa.TRANSPARENT)
                 ortho(inputPreview)
-                videoPlayer.draw(drawer, 0.0, 0.0, quadrantWidth, quadrantHeight)
+                videoplayers[0]?.draw(drawer, 0.0, 0.0, quadrantWidth, quadrantHeight)
+                videoplayers[1]?.draw(drawer, quadrantWidth, 0.0, quadrantWidth, quadrantHeight)
+                videoplayers[2]?.draw(drawer, 0.0, quadrantHeight, quadrantWidth, quadrantHeight)
+                videoplayers[3]?.draw(drawer, quadrantWidth, quadrantHeight, quadrantWidth, quadrantHeight)
+
             }
 
             drawer.isolatedWithTarget(outputPreview) {
@@ -327,7 +398,7 @@ fun main() = application {
                 programState.surfaces.drawMeshes(inputPreview.colorBuffer(0), this)
 
             }
-            if(broadcast.broadcasting) {
+            if (broadcast.broadcasting) {
                 broadcast.outputFrame(outputPreview.colorBuffer(0))
             }
             if (programState.showPolygons) {
