@@ -212,7 +212,7 @@ fun main() = application {
                         val showPolygons= programState::showPolygons
                     }){
                         toggle {
-                            label = "mesh"
+                            label = "mapping"
                             value = watchObject.showPolygons.get()
                             events.valueChanged.listen {
                                 value = it.newValue
@@ -327,6 +327,9 @@ fun main() = application {
                 programState.surfaces.drawMeshes(inputPreview.colorBuffer(0), this)
 
             }
+            if(broadcast.broadcasting) {
+                broadcast.outputFrame(outputPreview.colorBuffer(0))
+            }
             if (programState.showPolygons) {
                 drawer.isolatedWithTarget(inputPreview) {
                     ortho(inputPreview)
@@ -346,13 +349,13 @@ fun main() = application {
                 inputPreview.colorBuffer(0),
                 inputRect.x, inputRect.y, inputRect.width, inputRect.height
             )
-            drawer.image(
-                outputPreview.colorBuffer(0),
-                outputRect.x, outputRect.y, outputRect.width, outputRect.height
-            )
-            if(broadcast.broadcasting) {
-                broadcast.outputFrame(outputPreview.colorBuffer(0))
+            if (programState.showPolygons) {
+                drawer.image(
+                    outputPreview.colorBuffer(0),
+                    outputRect.x, outputRect.y, outputRect.width, outputRect.height
+                )
             }
+
         }
     }
 }

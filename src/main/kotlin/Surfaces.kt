@@ -210,7 +210,6 @@ class Surfaces() {
             }
             drawer.vertexBuffer(it, DrawPrimitive.TRIANGLES)
         }
-
     }
 
     fun clear() {
