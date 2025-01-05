@@ -419,7 +419,6 @@ fun main() = application {
             drawer.fill = ColorRGBa.BLACK
             drawer.stroke = null
             drawer.rectangle(inputRect)
-            drawer.rectangle(outputRect)
 
             drawer.translate(inputRect.x, inputRect.y)
             drawer.image(
@@ -427,15 +426,20 @@ fun main() = application {
                 0.0, 0.0, inputRect.width, inputRect.height
             )
             if (programState.showPolygons) {
+
                 drawer.ortho()
 
                 programState.surfaces.drawInputPolygons(drawer, inputRect)
 
             }
 
-            drawer.translate(0.0, inputRect.height + seperatorWidth)
 
             if (programState.showPolygons) {
+                drawer.translate(0.0, inputRect.height + seperatorWidth)
+                drawer.fill = ColorRGBa.BLACK
+                drawer.stroke = null
+                drawer.rectangle(0.0,0.0, outputRect.width, outputRect.height)
+
                 drawer.image(
                     lowfpsOutput,
                     0.0, 0.0, outputRect.width, outputRect.height
