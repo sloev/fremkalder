@@ -120,6 +120,7 @@ fun main() = application {
         height = (previewHeight * 2.0 + seperatorWidth * 3).toInt()
         windowResizable = false
         title = "fremkalder"
+
     }
 
     program {
@@ -147,6 +148,8 @@ fun main() = application {
         val outputRect = inputRect.movedBy(Vector2(0.0, inputRect.height + seperatorWidth))
         val broadcast = Broadcast(outputWidth.toInt(), outputHeight.toInt())
         var videoplayers: MutableList<VideoPlayerFFMPEG?> = mutableListOf(null, null, null, null)
+        var lowfpsInput = inputPreview.colorBuffer(0)
+        var lowfpsOutput = outputPreview.colorBuffer(0)
 
         drawer.isolatedWithTarget(inputPreview) {
             drawer.clear(ColorRGBa.TRANSPARENT)
@@ -195,141 +198,152 @@ fun main() = application {
         val cm = controlManager {
 
             layout {
+                styleSheet(has class_ "container") {
+                    this.width = menuWidth.toInt().px
+                    this.height = 100.percent
+
+
+                }
                 styleSheet(has class_ "surfaces") {
                     this.width = menuWidth.toInt().px
+
                 }
 
                 styleSheet(has class_ "row") {
                     this.display = Display.FLEX
                     this.flexDirection = FlexDirection.Row
                     this.width = 100.percent
+
+
                 }
-                div("row") {
+                div("container") {
+                    div("row") {
 
-                    watchObjectDiv("savebutton", watchObject = object {
-                        // for primitive types we have to use property references
-                        val dirty = programState::dirty
-                    }) {
-                        div {
-                            button {
-                                label = "save"
-                                style = styleSheet() {
-                                    this.background =
-                                        Color.RGBa(if (watchObject.dirty.get()) ColorRGBa.RED else ColorRGBa.GRAY)
-                                }
-                                clicked {
-                                    saveFileDialog(supportedExtensions = listOf("FREMKALDER" to listOf("fremkalder"))) {
-                                        programState.save(it)
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    button {
-                        label = "load"
-
-                        clicked {
-                            openFileDialog(supportedExtensions = listOf("FREMKALDER" to listOf("fremkalder"))) {
-                                programState.load(it)
-                                drawer.isolatedWithTarget(outputPreview) {
-                                    ortho(outputPreview)
-                                    programState.surfaces.calculateMesh(drawer.bounds.dimensions)
-
-                                }
-                            }
-                        }
-                    }
-                }
-                div("row") {
-                    watchObjectDiv(watchObject = object {
-                        val showPolygons = programState::showPolygons
-                    }) {
-                        toggle {
-                            label = "mapping"
-                            value = watchObject.showPolygons.get()
-                            events.valueChanged.listen {
-                                value = it.newValue
-                                programState.showPolygons = !watchObject.showPolygons.get()
-                            }
-                        }
-                    }
-                    watchObjectDiv(watchObject = object {
-                        val broadcasting = broadcast::broadcasting
-                    }) {
-                        toggle {
-                            label = "live"
-                            value = watchObject.broadcasting.get()
-                            events.valueChanged.listen {
-                                if (it.newValue) {
-                                    broadcast.start()
-                                } else {
-                                    broadcast.stop()
-                                }
-
-                            }
-                        }
-                    }
-                }
-                watchObjectDiv(watchObject = object {
-                    val mappingMode = programState::showPolygons
-                }) {
-
-
-                    if (watchObject.mappingMode.get()) {
-
-                        div("row") {
-                            button {
-                                label = "+ rect"
-                                clicked {
-                                    programState.surfaces.addRect()
-                                    drawer.isolatedWithTarget(outputPreview) {
-                                        ortho(outputPreview)
-                                        programState.surfaces.calculateMesh(this.bounds.dimensions)
-                                    }
-                                    programState.dirty = true
-                                }
-                            }
-                            button {
-                                label = "+ triangle"
-                                clicked {
-                                    programState.surfaces.addTriangle()
-                                    drawer.isolatedWithTarget(outputPreview) {
-                                        ortho(outputPreview)
-                                        programState.surfaces.calculateMesh(this.bounds.dimensions)
-                                    }
-                                    programState.dirty = true
-                                }
-                            }
-                        }
-
-                        watchListDiv("surfaces", watchList = programState.surfaces.surfaces) { surface ->
-                            div("row") {
-
+                        watchObjectDiv("savebutton", watchObject = object {
+                            // for primitive types we have to use property references
+                            val dirty = programState::dirty
+                        }) {
+                            div {
                                 button {
-                                    label = "delete"
+                                    label = "save"
                                     style = styleSheet() {
-                                        this.background = Color.RGBa(idToColor(surface.id))
-
+                                        this.background =
+                                            Color.RGBa(if (watchObject.dirty.get()) ColorRGBa.RED else ColorRGBa.GRAY)
                                     }
-
                                     clicked {
-                                        programState.surfaces.remove(surface)
-                                        programState.dirty = true
+                                        saveFileDialog(supportedExtensions = listOf("FREMKALDER" to listOf("fremkalder"))) {
+                                            programState.save(it)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        button {
+                            label = "load"
+
+                            clicked {
+                                openFileDialog(supportedExtensions = listOf("FREMKALDER" to listOf("fremkalder"))) {
+                                    programState.load(it)
+                                    drawer.isolatedWithTarget(outputPreview) {
+                                        ortho(outputPreview)
+                                        programState.surfaces.calculateMesh(drawer.bounds.dimensions)
 
                                     }
                                 }
-                                toggle {
-                                    label = "lock"
-                                    value = surface.locked
-                                    events.valueChanged.listen {
-                                        value = it.newValue
-                                        surface.locked = value
-                                        programState.dirty = true
+                            }
+                        }
+                    }
+                    div("row") {
+                        watchObjectDiv(watchObject = object {
+                            val showPolygons = programState::showPolygons
+                        }) {
+                            toggle {
+                                label = "mapping"
+                                value = watchObject.showPolygons.get()
+                                events.valueChanged.listen {
+                                    value = it.newValue
+                                    programState.showPolygons = !watchObject.showPolygons.get()
+                                }
+                            }
+                        }
+                        watchObjectDiv(watchObject = object {
+                            val broadcasting = broadcast::broadcasting
+                        }) {
+                            toggle {
+                                label = "live"
+                                value = watchObject.broadcasting.get()
+                                events.valueChanged.listen {
+                                    if (it.newValue) {
+                                        broadcast.start()
+                                    } else {
+                                        broadcast.stop()
+                                    }
 
+                                }
+                            }
+                        }
+                    }
+                    watchObjectDiv(watchObject = object {
+                        val mappingMode = programState::showPolygons
+                    }) {
+
+
+                        if (watchObject.mappingMode.get()) {
+
+                            div("row") {
+                                button {
+                                    label = "+ rect"
+                                    clicked {
+                                        programState.surfaces.addRect()
+                                        drawer.isolatedWithTarget(outputPreview) {
+                                            ortho(outputPreview)
+                                            programState.surfaces.calculateMesh(this.bounds.dimensions)
+                                        }
+                                        programState.dirty = true
                                     }
                                 }
+                                button {
+                                    label = "+ triangle"
+                                    clicked {
+                                        programState.surfaces.addTriangle()
+                                        drawer.isolatedWithTarget(outputPreview) {
+                                            ortho(outputPreview)
+                                            programState.surfaces.calculateMesh(this.bounds.dimensions)
+                                        }
+                                        programState.dirty = true
+                                    }
+                                }
+                            }
 
+                            watchListDiv("surfaces", watchList = programState.surfaces.surfaces) { surface ->
+                                div("row") {
+
+                                    button {
+                                        label = "delete"
+                                        style = styleSheet() {
+                                            this.background = Color.RGBa(idToColor(surface.id))
+
+                                        }
+
+                                        clicked {
+                                            programState.surfaces.remove(surface)
+                                            programState.dirty = true
+
+                                        }
+                                    }
+                                    toggle {
+                                        label = "lock"
+                                        value = surface.locked
+                                        events.valueChanged.listen {
+                                            value = it.newValue
+                                            surface.locked = value
+                                            programState.dirty = true
+
+                                        }
+                                    }
+
+                                }
                             }
                         }
                     }
@@ -371,11 +385,13 @@ fun main() = application {
 
             }
         }
+
         extend {
             drawer.clear(ColorRGBa.DARK_SLATE_GRAY)
 
+
             drawer.isolatedWithTarget(inputPreview) {
-                clear(ColorRGBa.TRANSPARENT)
+                drawer.clear(ColorRGBa.TRANSPARENT)
                 ortho(inputPreview)
                 videoplayers[0]?.draw(drawer, 0.0, 0.0, quadrantWidth, quadrantHeight)
                 videoplayers[1]?.draw(drawer, quadrantWidth, 0.0, quadrantWidth, quadrantHeight)
@@ -385,7 +401,7 @@ fun main() = application {
             }
 
             drawer.isolatedWithTarget(outputPreview) {
-                clear(ColorRGBa.TRANSPARENT)
+                drawer.clear(ColorRGBa.TRANSPARENT)
                 ortho(outputPreview)
                 programState.surfaces.drawMeshes(inputPreview.colorBuffer(0), this)
 
@@ -393,30 +409,42 @@ fun main() = application {
             if (broadcast.broadcasting) {
                 broadcast.outputFrame(outputPreview.colorBuffer(0))
             }
-            if (programState.showPolygons) {
-                drawer.isolatedWithTarget(inputPreview) {
-                    ortho(inputPreview)
-                    programState.surfaces.drawInputPolygons(this)
-                }
-                drawer.isolatedWithTarget(outputPreview) {
-                    ortho(outputPreview)
-                    programState.surfaces.drawOutputPolygons(this)
-                }
+
+            if ((seconds * 20).toInt() % 2 == 0) {
+                lowfpsInput = inputPreview.colorBuffer(0)
+                lowfpsOutput = outputPreview.colorBuffer(0)
             }
+
+
             drawer.fill = ColorRGBa.BLACK
             drawer.stroke = null
             drawer.rectangle(inputRect)
             drawer.rectangle(outputRect)
 
+            drawer.translate(inputRect.x, inputRect.y)
             drawer.image(
-                inputPreview.colorBuffer(0),
-                inputRect.x, inputRect.y, inputRect.width, inputRect.height
+                lowfpsInput,
+                0.0, 0.0, inputRect.width, inputRect.height
             )
             if (programState.showPolygons) {
+                drawer.ortho()
+
+                programState.surfaces.drawInputPolygons(drawer, inputRect)
+
+            }
+
+            drawer.translate(0.0, inputRect.height + seperatorWidth)
+
+            if (programState.showPolygons) {
                 drawer.image(
-                    outputPreview.colorBuffer(0),
-                    outputRect.x, outputRect.y, outputRect.width, outputRect.height
+                    lowfpsOutput,
+                    0.0, 0.0, outputRect.width, outputRect.height
                 )
+
+                drawer.ortho()
+                programState.surfaces.drawOutputPolygons(drawer, outputRect)
+
+
             }
 
         }

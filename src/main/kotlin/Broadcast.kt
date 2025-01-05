@@ -32,10 +32,11 @@ class Broadcast(
 
     val cmd = """
             $ffmpegFile  \
+            -re  \
             -f rawvideo -vcodec rawvideo \
-            -s "${width}x${height}" -pix_fmt "$inputFormat" -r "$frameRate" -i - \
-            -c:v libx264 -preset ultrafast -tune zerolatency -muxdelay 0 -flags2 '+fast' \
-            -f mpegts -omit_video_pes_length 1 "pipe:1"   | $socatFile - udp-sendto:$udpIp:$udpPort,broadcast
+            -s "${width}x${height}" -pix_fmt "$inputFormat" -i - \
+            -c:v mpeg2video -q:v 20 -pix_fmt yuv420p -g 1 -threads 2 \
+            -vf "vflip" -f mpegts -omit_video_pes_length 1 "pipe:1"   | $socatFile - udp-sendto:$udpIp:$udpPort,broadcast
         """.trimIndent()
 
     var channel: WritableByteChannel? = null

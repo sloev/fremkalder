@@ -3,6 +3,7 @@ import org.openrndr.color.ColorRGBa
 import org.openrndr.draw.*
 import org.openrndr.math.Vector2
 import org.openrndr.math.mix
+import org.openrndr.shape.Rectangle
 import org.openrndr.shape.ShapeContour
 
 fun idToColor(id: Double): ColorRGBa {
@@ -42,8 +43,9 @@ class Surfaces() {
         incrementSurfaceCounts(s.kind)
         return s
     }
-    fun incrementSurfaceCounts(kind:String){
-        surfaceCounts[kind] = surfaceCounts.getOrDefault(kind, 0)+1
+
+    fun incrementSurfaceCounts(kind: String) {
+        surfaceCounts[kind] = surfaceCounts.getOrDefault(kind, 0) + 1
 
     }
 
@@ -136,7 +138,7 @@ class Surfaces() {
 
     fun remove(surface: Surface) {
         surface.destroy()
-        surfaceCounts[surface.kind] = surfaceCounts.getOrDefault(surface.kind, 0)-1
+        surfaceCounts[surface.kind] = surfaceCounts.getOrDefault(surface.kind, 0) - 1
         surfaces.remove(surface)
     }
 
@@ -175,27 +177,27 @@ class Surfaces() {
         }
     }
 
-    private fun drawPolygons(drawer: Drawer, points: MutableList<ProjectorPoint>) {
-        val localPoints = points.map { it.point * drawer.bounds.dimensions }
+    private fun drawPolygons(drawer: Drawer, points: MutableList<ProjectorPoint>, bounds: Rectangle) {
+        val localPoints = points.map { it.point * bounds.dimensions }
         val contour = ShapeContour.fromPoints(localPoints, closed = true)
 
         drawer.stroke = idToColor(points[0].surface.id)
-        drawer.strokeWeight = 5.0
+        drawer.strokeWeight = 1.0
         drawer.fill = null
         drawer.contour(contour)
-        drawer.circles(localPoints, points.map { if (it.hover) 30.0 else 10.0 })
+        drawer.circles(localPoints, points.map { if (it.hover) 10.0 else 5.0 })
     }
 
 
-    fun drawInputPolygons(drawer: Drawer) {
+    fun drawInputPolygons(drawer: Drawer, bounds: Rectangle) {
         for (s in surfaces) {
-            drawPolygons(drawer, s.inputPoints)
+            drawPolygons(drawer, s.inputPoints, bounds)
         }
     }
 
-    fun drawOutputPolygons(drawer: Drawer) {
+    fun drawOutputPolygons(drawer: Drawer, bounds: Rectangle) {
         for (s in surfaces) {
-            drawPolygons(drawer, s.outputPoints)
+            drawPolygons(drawer, s.outputPoints, bounds)
         }
     }
 
@@ -216,6 +218,6 @@ class Surfaces() {
         surfaces.clear()
         inputPoints.clear()
         outputPoints.clear()
-        outputMesh= null
+        outputMesh = null
     }
 }
